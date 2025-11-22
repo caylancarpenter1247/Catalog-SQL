@@ -1,0 +1,60 @@
+# Automated Product Catalog Builder (Entity Resolution Across Scrape, Vendor, and PIM)
+
+This project demonstrates a SQL-based entity-resolution pipeline that builds a 
+deduped, enriched product catalog from three sources:
+
+- Retailer transaction / vendor feed data
+- Web-scraped product pages
+- An existing PIM catalog
+
+The goal is to produce a **ready-to-upload catalog file per brand** that powers
+reliable product matching and reduces manual catalog curation.
+
+![Catalog Architecture](./catalog_architecture.png)
+
+## Problem
+
+We had large volumes of retailer purchase data and scraped product pages, but no
+clean, unified catalog suitable for product matching or analytics. The existing
+PIM contained partial data with inconsistent identifiers, and onboarding new
+brands required manual spreadsheet work.
+
+## Approach
+
+1. **Normalize identifiers** across sources (UPC, model, SKU, GTIN).
+2. **Join scrape data to vendor feed** using external product IDs.
+3. **Score record quality** based on presence of description, images, URLs, and titles.
+4. **Self-deduplicate** within each brand across UPC, model, SKU, and GTIN using
+   window functions and the quality score.
+5. **Cross-deduplicate vs PIM**:
+   - Drop rows whose UPC already exists in the PIM.
+   - Flag rows whose model collides with any PIM identifier (MPN, SKU, model).
+6. **Emit a PIM-ready file** with:
+   - Canonical identifiers
+   - Descriptions and URLs
+   - QA flags for collisions
+   - Lineage back to scrape and vendor records
+
+## Technologies & Techniques
+
+- Databricks SQL / Spark SQL
+- CTE pipelines
+- Identifier normalization and regex cleaning
+- Entity resolution across multiple systems
+- Window functions for ranking and deduplication
+- Cross-system reconciliation against a PIM snapshot
+
+## Sample (Sanitized) SQL
+
+```sql
+WITH scrape_ok AS ( ... ),
+     vendor_ok AS ( ... ),
+     joined_raw AS ( ... ),
+     joined_scored AS ( ... ),
+     joined_ranked AS ( ... ),
+     brand_dedup AS ( ... ),
+     catalog AS ( ... ),
+     screened AS ( ... ),
+     ready_to_upload AS ( ... )
+SELECT ...
+FROM ready_to_upload;
