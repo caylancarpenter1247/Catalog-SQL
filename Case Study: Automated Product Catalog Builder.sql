@@ -265,3 +265,45 @@ SELECT
   image_urls
 FROM ready_to_upload
 ORDER BY brand, model;
+
+#### Solution Architecture
+
+       Retailer Scraped Data              Vendor Feed Data
+   (Model, Name, Description, etc)   +   (UPC, SKU, Ext ID, Images)
+                        \              /
+                         \            /
+                       Entity Join on External Product ID
+                                 |
+                                 v
+                          Enriched Records
+                                 |
+                +----------------+----------------+
+                | normalization & key scoring     |
+                v                                 |
+        self-dedupe (UPC / Model / SKU / GTIN)    |
+                |                                 |
+                +---------------+-----------------+
+                                |
+                        Cross-dedupe vs PIM
+                                |
+                                v
+                  Ready-to-upload Brand Catalog
+               (PIM-formatted, deduped, enriched)
+
+#### Impact
+   
+1. Reduced catalog-building time from hours/days → minutes
+   - Previously required manual spreadsheet cleaning
+   - Catalog upload per brand became a single filtered query
+   - Enabled a scalable ingestion process
+2. Increased product-matching accuracy
+   - Clean catalog identifiers
+   - Eliminated duplicate products
+   - Rapid increase in accurate training data 
+3. Improved supplier reporting
+   - Reliable product and purchase data from receipts
+   - Cleaner data for downstream attribution
+4. Boosted data quality and integrity across systems
+   - PIM stayed clean and duplication free
+   - Scrapped/Vendor mismatches were resolved systematically
+   - QA flags prevented silent data corruption 
