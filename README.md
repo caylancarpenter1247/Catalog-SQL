@@ -23,33 +23,34 @@ Across the projects, the work demonstrates:
 
 ### 1. [Automated Product Catalog Builder](Case%20Study%3A%20Automated%20Product%20Catalog%20Builder.sql)
 
-Builds a deduplicated, enriched, PIM-ready product catalog by combining retailer data, web-scraped product records, vendor feeds, and an existing product catalog.
+Built a SQL workflow in Databricks to automate product catalog creation using retailer purchase metadata, scraped product listings, and existing PIM records.
 
-**Business problem:** Product onboarding required extensive spreadsheet work, identifiers were inconsistent across systems, and duplicate records reduced downstream matching accuracy.
+**The problem**
 
-**Solution highlights:**
+My team had started manually reviewing product URLs from purchase data to identify products, gather missing information, and prepare records for our product catalog. The process worked, but the amount of research, data cleaning, and spreadsheet work involved made it difficult to scale.
 
-- Normalizes UPC, SKU, GTIN, model, and manufacturer identifiers
-- Joins web-scraped records to vendor-product data
-- Scores record completeness to retain the strongest candidate
-- Deduplicates within each brand using multiple identifiers
-- Reconciles new records against the existing product catalog
-- Produces a structured upload file with lineage and QA flags
+The bigger challenge was that the catalog supported an automated product-matching system. Expanding the catalog wasn't just about adding more products. We needed better identifiers and descriptive metadata to improve product recognition across receipts from different retailers.
 
-**Design rationale:** This was not simply a duplicate-removal exercise. The objective was to create a repeatable, brand-specific catalog onboarding workflow that improved product recognition while limiting ambiguous records.
+**How I approached it**
 
-- **Minimum source requirements:** The workflow requires a scraped model and vendor UPC/SKU before candidates enter the joined dataset. These requirements reflect known inconsistencies in retailer listings; the sanitized SQL should be treated as the documented implementation rather than evidence that every original validation rule is shown.
-- **Retailer-specific linking:** External product IDs connect retailer-sourced vendor records with corresponding scraped listings. They serve as source-specific join keys, not universal product identifiers.
-- **Matching-oriented enrichment:** Metadata completeness determines the initial quality score; description length breaks ties because additional descriptive keywords were useful to the downstream product-recognition model. Length is a heuristic, not a guarantee of accuracy.
-- **Conservative selection:** Independent UPC, model, SKU, and GTIN rankings must all equal one for automatic selection. This favors consistency over maximum coverage; conflicting or lower-ranked candidates may require human review rather than automatic admission.
-- **PIM reconciliation:** Existing UPCs are excluded from the new-product output, while model collisions are flagged. The shown SQL prepares new catalog candidates; it does not itself merge attributes into existing PIM records or enforce a review gate on flagged model collisions.
-- **Traceability:** Scrape and vendor identifiers remain in the output so records can be traced back to their inputs. This is record-level provenance, not a claim of end-to-end enterprise data lineage.
+I built a repeatable workflow that connected the available data sources, evaluated metadata quality, resolved duplicate records, and generated brand-specific catalog files ready for import into Akeneo.
 
-**Architecture:** Retailer/vendor feed + successful scraped listings → source validation and identifier normalization → join on retailer-specific external product ID → metadata scoring → multi-identifier ranking → comparison against existing PIM → brand-specific upload candidates and QA indicators. Human review of exceptions was part of the surrounding operational process and is not fully represented in the sanitized SQL.
+A few decisions shaped the design:
 
-**Impact:** Replaced extensive manual catalog preparation with a repeatable query-driven workflow, supported expanded product coverage, and improved the consistency of inputs used for downstream product matching. An estimated ~4,000 hours of manual effort were avoided in the broader catalog-generation work; that estimate is project context, not a benchmark independently demonstrated by the sanitized query.
+- **Source requirements:** Retailer listings weren't always reliable, so I required specific identifiers before allowing records into the automated catalog workflow.
+- **Connecting the data:** Used retailer-specific external product IDs to join purchase metadata with scraped product listings and enrich the available product information.
+- **Metadata quality:** Scored records based on available descriptions, images, URLs, and titles. Used description length as a secondary ranking factor because additional keywords supported downstream product recognition.
+- **Deduplication:** Ranked records across UPC, model, SKU, and GTIN. Candidates needed to pass each applicable identifier check rather than risk adding duplicate or conflicting products.
+- **Existing catalog checks:** Compared candidates against the PIM to exclude existing UPCs and flag potential identifier conflicts.
+- **Import-ready output:** Structured the final dataset to match Akeneo's CSV import requirements, allowing brand-specific files to be exported directly from Databricks without additional spreadsheet formatting.
 
-**Techniques:** Entity resolution, regex normalization, window functions, quality scoring, cross-system reconciliation, parameterized SQL, CTE pipelines
+**Business impact**
+
+The workflow reduced catalog preparation from hours of manual research and spreadsheet work to minutes. Based on the manual review process my team had already started, I estimated that the broader automation effort avoided approximately **4,000 hours of manual product research and catalog preparation**.
+
+Expanding the catalog also supported automatic matching of products from other retailers when UPCs or manufacturer part numbers could be identified on receipts. The additional product descriptions and attributes provided more information for the AI matching algorithm and supported the human-in-the-loop review process managed by my team.
+
+**Technologies:** Databricks SQL, CTEs, window functions, identifier normalization, metadata scoring, entity resolution, and cross-system reconciliation.
 
 ---
 
