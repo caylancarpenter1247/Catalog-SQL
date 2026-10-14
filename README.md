@@ -36,6 +36,19 @@ Builds a deduplicated, enriched, PIM-ready product catalog by combining retailer
 - Reconciles new records against the existing product catalog
 - Produces a structured upload file with lineage and QA flags
 
+**Design rationale:** This was not simply a duplicate-removal exercise. The objective was to create a repeatable, brand-specific catalog onboarding workflow that improved product recognition while limiting ambiguous records.
+
+- **Minimum source requirements:** The workflow requires a scraped model and vendor UPC/SKU before candidates enter the joined dataset. These requirements reflect known inconsistencies in retailer listings; the sanitized SQL should be treated as the documented implementation rather than evidence that every original validation rule is shown.
+- **Retailer-specific linking:** External product IDs connect retailer-sourced vendor records with corresponding scraped listings. They serve as source-specific join keys, not universal product identifiers.
+- **Matching-oriented enrichment:** Metadata completeness determines the initial quality score; description length breaks ties because additional descriptive keywords were useful to the downstream product-recognition model. Length is a heuristic, not a guarantee of accuracy.
+- **Conservative selection:** Independent UPC, model, SKU, and GTIN rankings must all equal one for automatic selection. This favors consistency over maximum coverage; conflicting or lower-ranked candidates may require human review rather than automatic admission.
+- **PIM reconciliation:** Existing UPCs are excluded from the new-product output, while model collisions are flagged. The shown SQL prepares new catalog candidates; it does not itself merge attributes into existing PIM records or enforce a review gate on flagged model collisions.
+- **Traceability:** Scrape and vendor identifiers remain in the output so records can be traced back to their inputs. This is record-level provenance, not a claim of end-to-end enterprise data lineage.
+
+**Architecture:** Retailer/vendor feed + successful scraped listings → source validation and identifier normalization → join on retailer-specific external product ID → metadata scoring → multi-identifier ranking → comparison against existing PIM → brand-specific upload candidates and QA indicators. Human review of exceptions was part of the surrounding operational process and is not fully represented in the sanitized SQL.
+
+**Impact:** Replaced extensive manual catalog preparation with a repeatable query-driven workflow, supported expanded product coverage, and improved the consistency of inputs used for downstream product matching. An estimated ~4,000 hours of manual effort were avoided in the broader catalog-generation work; that estimate is project context, not a benchmark independently demonstrated by the sanitized query.
+
 **Techniques:** Entity resolution, regex normalization, window functions, quality scoring, cross-system reconciliation, parameterized SQL, CTE pipelines
 
 ---
